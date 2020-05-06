@@ -1,0 +1,51 @@
+## @file
+#
+#   Copyright (c) 2020, Allen Cheng(AllenCheng01@gmail.com). All rights reserved.<BR>
+#   This program and the accompanying materials
+#   are licensed and made available under the terms and conditions of the BSD License
+#   which accompanies this distribution. The full text of the license may be found at
+#   http://opensource.org/licenses/bsd-license.
+#
+#   THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010006
+  BASE_NAME                      = GetHii
+  FILE_GUID                      = bb4a158e-00e0-4b1e-a19d-969c2383cd2a
+  MODULE_TYPE                    = UEFI_APPLICATION
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = GetHiiEntry
+
+#
+#  This flag specifies whether HII resource section is generated into PE image.
+#
+  UEFI_HII_RESOURCE_SECTION      = TRUE
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64 EBC
+#
+
+[Sources]
+  GetHii.c
+  GetHii.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  ShellPkg/ShellPkg.dec
+
+
+[LibraryClasses]
+  UefiApplicationEntryPoint
+  UefiLib
+  ShellLib
+  UefiBootServicesTableLib
+  BaseLib
+  HiiLib
+
+[Guids]
