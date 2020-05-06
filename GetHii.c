@@ -176,6 +176,38 @@ static CHAR16 *GetHiiString(EFI_HII_HANDLE pHandle, EFI_STRING_ID StringId){
   return StrBuff;
 }
 
+VOID GetMinMaxStepValue(UINT64 *Max, UINT64 *Min, UINT64 *Step, UINT8 Flags, MINMAXSTEP_DATA data){
+  switch (Flags & EFI_IFR_NUMERIC_SIZE)
+  {
+  case EFI_IFR_NUMERIC_SIZE_1:
+    *Max  = data.u8.MaxValue;
+    *Min  = data.u8.MinValue;
+    *Step = data.u8.Step;
+    break;
+  case EFI_IFR_NUMERIC_SIZE_2:
+    *Max  = data.u16.MaxValue;
+    *Min  = data.u16.MinValue;
+    *Step = data.u16.Step;
+    break;
+  case EFI_IFR_NUMERIC_SIZE_4:
+    *Max  = data.u32.MaxValue;
+    *Min  = data.u32.MinValue;
+    *Step = data.u32.Step;
+    break;
+  case EFI_IFR_NUMERIC_SIZE_8:
+    *Max  = data.u64.MaxValue;
+    *Min  = data.u64.MinValue;
+    *Step = data.u64.Step;
+    break;
+
+  default:
+    *Max  = 1;
+    *Min  = 0;
+    *Step = 1;
+    break;
+  }
+}
+
 EFI_STATUS ParsingValue(EFI_HII_HANDLE pHandle, EFI_IFR_OP_HEADER *OpCodeData){
   EFI_IFR_ONE_OF    *IfrOneOf;
   EFI_IFR_CHECKBOX  *IfrCheckBox;
@@ -192,6 +224,10 @@ EFI_STATUS ParsingValue(EFI_HII_HANDLE pHandle, EFI_IFR_OP_HEADER *OpCodeData){
   EFI_GUID          VarGuid;
   UINT32            Attribute;
   UINT64            Value;
+  UINT64            MaxValue;
+  UINT64            MinValue;
+  UINT64            Step;
+  BOOLEAN           IsCheckBox;
 
   Status        = EFI_SUCCESS;
   IfrOneOf      = NULL;
@@ -206,6 +242,10 @@ EFI_STATUS ParsingValue(EFI_HII_HANDLE pHandle, EFI_IFR_OP_HEADER *OpCodeData){
   DataLen       = 0;
   Attribute     = 0;
   Value         = 0;
+  MaxValue      = 0;
+  MinValue      = 0;
+  Step          = 0;
+  IsCheckBox    = FALSE;
 
   switch (OpCodeData->OpCode)
   {
@@ -215,6 +255,7 @@ EFI_STATUS ParsingValue(EFI_HII_HANDLE pHandle, EFI_IFR_OP_HEADER *OpCodeData){
       VarStoreId = IfrNumeric->Question.VarStoreId;
       VarOffset = IfrNumeric->Question.VarStoreInfo.VarOffset;
       Flags = (IfrNumeric->Flags & EFI_IFR_NUMERIC_SIZE);
+      GetMinMaxStepValue(&MaxValue, &MinValue, &Step, Flags, IfrNumeric->data);
       break;
     case EFI_IFR_ONE_OF_OP:
       IfrOneOf = (EFI_IFR_ONE_OF *)OpCodeData;
@@ -222,6 +263,7 @@ EFI_STATUS ParsingValue(EFI_HII_HANDLE pHandle, EFI_IFR_OP_HEADER *OpCodeData){
       VarStoreId = IfrOneOf->Question.VarStoreId;
       VarOffset = IfrOneOf->Question.VarStoreInfo.VarOffset;
       Flags = (IfrOneOf->Flags & EFI_IFR_NUMERIC_SIZE);
+      GetMinMaxStepValue(&MaxValue, &MinValue, &Step, Flags, IfrOneOf->data);
       break;
     case EFI_IFR_CHECKBOX_OP:
       IfrCheckBox = (EFI_IFR_CHECKBOX *)OpCodeData;
@@ -229,6 +271,7 @@ EFI_STATUS ParsingValue(EFI_HII_HANDLE pHandle, EFI_IFR_OP_HEADER *OpCodeData){
       VarStoreId = IfrCheckBox->Question.VarStoreId;
       VarOffset = IfrCheckBox->Question.VarStoreInfo.VarOffset;
       Flags = EFI_IFR_NUMERIC_SIZE_1;
+      IsCheckBox = TRUE;
       break;
   }
 
@@ -267,9 +310,30 @@ EFI_STATUS ParsingValue(EFI_HII_HANDLE pHandle, EFI_IFR_OP_HEADER *OpCodeData){
       Value |= data[VarOffset + 3] << 24;
       break;
     case EFI_IFR_NUMERIC_SIZE_8:
+      {
+        UINT64 LSB;
+        UINT64 HSB;
+
+        LSB = 0;
+        HSB = 0;
+        LSB  = data[VarOffset];
+        LSB |= data[VarOffset + 1] << 8;
+        LSB |= data[VarOffset + 2] << 16;
+        LSB |= data[VarOffset + 3] << 24;
+        HSB  = data[VarOffset + 4];
+        HSB |= data[VarOffset + 5] << 8;
+        HSB |= data[VarOffset + 6] << 16;
+        HSB |= data[VarOffset + 7] << 24;
+
+        Value = LSB + (HSB << 32);
+      }
       break;
     }
-    Print(L"%s:[0x%lx]\n", Name, Value);
+    Print(L"%s:[0x%lx] ", Name, Value);
+    if(IsCheckBox)
+      Print(L"CheckBox\n");
+    else
+      Print(L"Min:0x%x, Max:0x%x, step:0x%x\n", MinValue, MaxValue, Step);
   }
 
   pBS->FreePool(Name);
