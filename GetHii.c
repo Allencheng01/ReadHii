@@ -61,7 +61,7 @@ struct VarStore_Struct
   UINT16 VarStoreId;
 };
 
-static struct VarStore_Struct VarStore[32];
+static struct VarStore_Struct VarStore[256];
 
 static void VarStoreInit(){
   UINTN Len;
@@ -87,6 +87,11 @@ static void VarStoreWrite(CHAR16 *Name, EFI_GUID Guid, UINT16 VarStoreId){
   for(Index = 0; ; Index++){
     if(VarStore[Index].VarStoreId == 0)
       break;
+  }
+  // to prevent the oversize situation
+  if(Index >= sizeof(VarStore)/sizeof(VarStore[0])){
+    print(L"VarStore overflow! could not get more item in this formset\n");
+    return;
   }
   VarStore[Index].VarStoreId = VarStoreId;
   CopyGuid(&VarStore[Index].Guid, &Guid);
@@ -411,6 +416,8 @@ EFI_STATUS ParsingOpCodeFun(EFI_HII_HANDLE pHandle, EFI_HII_PACKAGE_LIST_HEADER 
         case EFI_IFR_CHECKBOX_OP:
           ParsingValue(pHandle, OpCodeData);
           break;
+        default:
+          break;
         }
 
         Offset2 += OpCodeData->Length;
@@ -469,6 +476,7 @@ GetHiiEntry (
   HandleBufferLength = 0;
   HiiHandleBuffer = NULL;
   Index = 0;
+  Status = EFI_SUCCESS;
   pBS = SystemTable->BootServices;
   pRS = SystemTable->RuntimeServices;
 
